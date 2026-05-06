@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محلل البيانات - ماجد مشرقي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
+        
+        :root {
+            --male-a-color: #2563eb; 
+            --female-a-color: #db2777;
+            --male-b-color: #1e293b; 
+            --female-b-color: #f97316; 
+        }
+
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background: #f8fafc; 
+            color: #1e293b;
+        }
+        
+        .pyramid-card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .pyramid-container { 
+            display: flex; 
+            flex-direction: column-reverse; 
+            width: 100%; 
+        }
+
+        .age-row { 
+            display: flex; 
+            align-items: center; 
+            height: 20px; 
+            margin-bottom: 2px;
+            width: 100%;
+        }
+        
+        .side-container { 
+            flex: 1; 
+            display: flex; 
+            height: 100%; 
+            position: relative;
+        }
+        
+        .male-side { justify-content: flex-end; }
+        .female-side { justify-content: flex-start; }
+
+        .bar-a-male { background-color: var(--male-a-color); height: 100%; border-radius: 2px 0 0 2px; transition: width 0.3s ease; }
+        .bar-a-female { background-color: var(--female-a-color); height: 100%; border-radius: 0 2px 2px 0; transition: width 0.3s ease; }
+        
+        .bar-b-male { background-color: var(--male-b-color); height: 100%; border-radius: 2px 0 0 2px; opacity: 0.7; transition: width 0.3s ease; }
+        .bar-b-female { background-color: var(--female-b-color); height: 100%; border-radius: 0 2px 2px 0; opacity: 0.7; transition: width 0.3s ease; }
+
+        .overlay-wrapper {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            z-index: 10;
+        }
+        
+        .male-side .overlay-wrapper { justify-content: flex-end; }
+        .female-side .overlay-wrapper { justify-content: flex-start; }
+
+        .age-label { 
+            width: 60px; 
+            text-align: center; 
+            font-size: 10px; 
+            font-weight: 800; 
+            color: #64748b;
+            background: #f8fafc; 
+            border-radius: 4px; 
+            margin: 0 5px; 
+            flex-shrink: 0;
+            line-height: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .input-name {
+            border: 2px solid #e2e8f0;
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-name:focus {
+            border-color: #6366f1;
+        }
+
+        @media print { .no-print { display: none !important; } }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div id="main-report" class="max-w-[1600px] mx-auto space-y-6 bg-[#f8fafc] p-4 rounded-3xl">
+        
+        <header class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-wrap gap-4 justify-between items-center no-print">
+            <div class="flex items-center gap-4">
+                <div class="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-slate-800">المنصة المتطورة للتحليل الديموغرافي</h1>
+                    <p class="text-slate-500 text-sm font-bold tracking-tight">إشراف وتطوير: ماجد مشرقي</p>
+                </div>
+            </div>
+            
+            <!-- حقول تسمية الأهرامات -->
+            <div class="flex gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100 items-center">
+                <label class="text-[10px] font-black text-slate-400 px-2">تسمية المجموعات:</label>
+                <input type="text" id="name-a-input" value="المجتمع (أ)" oninput="updateNames()" placeholder="اسم الهرم أ" class="input-name w-32">
+                <input type="text" id="name-b-input" value="المجتمع (ب)" oninput="updateNames()" placeholder="اسم الهرم ب" class="input-name w-32">
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+                <button onclick="convertToPercentagesAll()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-xs font-black hover:bg-slate-200 transition-all">النسب %</button>
+                <button onclick="exportToExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-md hover:bg-emerald-700">Excel</button>
+                <button onclick="exportToPDF()" class="bg-red-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-md hover:bg-red-700">PDF</button>
+                <button onclick="exportToImage('png')" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-black shadow-md hover:bg-blue-700">PNG</button>
+            </div>
+        </header>
+
+        <!-- بطاقات المؤشرات الذكية -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 no-print">
+            <div class="stat-card border-r-4 border-r-blue-500">
+                <p class="text-[10px] font-bold text-slate-400 uppercase display-name-a">إجمالي المجتمع (أ)</p>
+                <h4 id="total-a" class="text-xl font-black text-blue-600">0</h4>
+            </div>
+            <div class="stat-card border-r-4 border-r-slate-800">
+                <p class="text-[10px] font-bold text-slate-400 uppercase display-name-b">إجمالي المجتمع (ب)</p>
+                <h4 id="total-b" class="text-xl font-black text-slate-800">0</h4>
+            </div>
+            <div class="stat-card border-r-4 border-r-emerald-500">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">فجوة النمو (الفارق)</p>
+                <h4 id="total-diff" class="text-xl font-black text-emerald-600">0</h4>
+            </div>
+            <div class="stat-card border-r-4 border-r-amber-500">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">مؤشر الفتية (0-14)</p>
+                <h4 id="youth-index" class="text-xl font-black text-amber-600">0%</h4>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="pyramid-card">
+                <h2 class="text-sm font-black text-blue-700 mb-4 flex items-center gap-2 display-name-a">المجتمع (أ)</h2>
+                <div id="pyr-a-only" class="pyramid-container min-h-[400px]"></div>
+            </div>
+            <div class="pyramid-card">
+                <h2 class="text-sm font-black text-slate-800 mb-4 flex items-center gap-2 display-name-b">المجتمع (ب)</h2>
+                <div id="pyr-b-only" class="pyramid-container min-h-[400px]"></div>
+            </div>
+        </div>
+
+        <div class="pyramid-card border-2 border-slate-100 shadow-2xl">
+            <h2 class="text-xl font-black text-slate-900 mb-6 flex justify-between items-center">
+                <span>المقارنة التحليلية (تراكب)</span>
+                <div class="flex gap-4 text-[10px] font-bold">
+                    <div class="flex items-center gap-1"><div class="w-2 h-2 bg-blue-600 rounded-full"></div> <span class="display-name-a">المجتمع (أ)</span></div>
+                    <div class="flex items-center gap-1"><div class="w-2 h-2 bg-slate-800 opacity-70 rounded-full"></div> <span class="display-name-b">المجتمع (ب)</span></div>
+                </div>
+            </h2>
+            <div id="pyr-overlay" class="pyramid-container min-h-[500px]"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-black text-blue-600 mb-4 display-name-a">بيانات المجتمع (أ)</h3>
+                <div id="table-a"></div>
+            </div>
+            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-black text-slate-600 mb-4 display-name-b">بيانات المجتمع (ب)</h3>
+                <div id="table-b"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const ageGroups = ["0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80+"];
+        
+        let pyramids = {
+            p1: { male: [800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100, 50, 20], female: [780, 730, 680, 630, 580, 530, 480, 430, 380, 330, 280, 230, 190, 160, 120, 80, 40] },
+            p2: { male: [400, 450, 500, 600, 700, 750, 700, 650, 550, 500, 450, 400, 350, 300, 250, 150, 80], female: [380, 430, 480, 580, 680, 720, 680, 630, 530, 480, 430, 380, 330, 280, 230, 130, 70] }
+        };
+
+        function init() {
+            renderTables();
+            updateAllPyramids();
+            updateNames();
+        }
+
+        function updateNames() {
+            const nameA = document.getElementById('name-a-input').value || 'المجتمع (أ)';
+            const nameB = document.getElementById('name-b-input').value || 'المجتمع (ب)';
+            
+            document.querySelectorAll('.display-name-a').forEach(el => el.innerText = nameA);
+            document.querySelectorAll('.display-name-b').forEach(el => el.innerText = nameB);
+        }
+
+        function renderTables() {
+            ['a', 'b'].forEach(key => {
+                const target = key === 'a' ? 'p1' : 'p2';
+                const container = document.getElementById(`table-${key}`);
+                let html = `<table class="w-full text-[11px] text-right"><thead><tr class="text-slate-400 border-b"><th class="pb-2 text-right">العمر</th><th class="pb-2 text-center">ذكور</th><th class="pb-2 text-center">إناث</th></tr></thead><tbody>`;
+                ageGroups.forEach((g, i) => {
+                    html += `<tr class="border-b border-slate-50">
+                        <td class="py-2 font-bold">${g}</td>
+                        <td><input type="number" value="${pyramids[target].male[i]}" oninput="updateData('${target}', ${i}, 'male', this.value)" class="w-full bg-transparent text-center focus:bg-slate-50 outline-none"></td>
+                        <td><input type="number" value="${pyramids[target].female[i]}" oninput="updateData('${target}', ${i}, 'female', this.value)" class="w-full bg-transparent text-center focus:bg-slate-50 outline-none"></td>
+                    </tr>`;
+                });
+                container.innerHTML = html + `</tbody></table>`;
+            });
+        }
+
+        function updateData(target, index, gender, value) {
+            pyramids[target][gender][index] = parseFloat(value) || 0;
+            updateAllPyramids();
+        }
+
+        function updateAllPyramids() {
+            const maxVal = Math.max(...pyramids.p1.male, ...pyramids.p1.female, ...pyramids.p2.male, ...pyramids.p2.female, 1);
+            
+            const totalA = [...pyramids.p1.male, ...pyramids.p1.female].reduce((a, b) => a + b, 0);
+            const totalB = [...pyramids.p2.male, ...pyramids.p2.female].reduce((a, b) => a + b, 0);
+            const youthA = [...pyramids.p1.male.slice(0, 3), ...pyramids.p1.female.slice(0, 3)].reduce((a, b) => a + b, 0);
+            
+            document.getElementById('total-a').innerText = totalA.toLocaleString();
+            document.getElementById('total-b').innerText = totalB.toLocaleString();
+            document.getElementById('total-diff').innerText = Math.abs(totalA - totalB).toLocaleString();
+            document.getElementById('youth-index').innerText = ((youthA / (totalA || 1)) * 100).toFixed(1) + '%';
+
+            renderSinglePyramid('pyr-a-only', pyramids.p1, maxVal, 'bar-a');
+            renderSinglePyramid('pyr-b-only', pyramids.p2, maxVal, 'bar-b');
+            renderOverlayPyramid('pyr-overlay', maxVal);
+        }
+
+        function renderSinglePyramid(id, data, maxVal, barClass) {
+            const container = document.getElementById(id);
+            container.innerHTML = '';
+            ageGroups.forEach((g, i) => {
+                const row = document.createElement('div');
+                row.className = 'age-row';
+                row.innerHTML = `
+                    <div class="side-container male-side"><div class="${barClass}-male" style="width: ${(data.male[i]/maxVal)*100}%"></div></div>
+                    <div class="age-label">${g}</div>
+                    <div class="side-container female-side"><div class="${barClass}-female" style="width: ${(data.female[i]/maxVal)*100}%"></div></div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function renderOverlayPyramid(id, maxVal) {
+            const container = document.getElementById(id);
+            container.innerHTML = '';
+            ageGroups.forEach((g, i) => {
+                const row = document.createElement('div');
+                row.className = 'age-row';
+                const m1 = (pyramids.p1.male[i]/maxVal)*100, f1 = (pyramids.p1.female[i]/maxVal)*100;
+                const m2 = (pyramids.p2.male[i]/maxVal)*100, f2 = (pyramids.p2.female[i]/maxVal)*100;
+                row.innerHTML = `
+                    <div class="side-container male-side">
+                        <div class="bar-a-male" style="width: ${m1}%"></div>
+                        <div class="overlay-wrapper"><div class="bar-b-male" style="width: ${m2}%"></div></div>
+                    </div>
+                    <div class="age-label">${g}</div>
+                    <div class="side-container female-side">
+                        <div class="bar-a-female" style="width: ${f1}%"></div>
+                        <div class="overlay-wrapper"><div class="bar-b-female" style="width: ${f2}%"></div></div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function convertToPercentagesAll() {
+            ['p1', 'p2'].forEach(id => {
+                const total = [...pyramids[id].male, ...pyramids[id].female].reduce((a, b) => a + b, 0) || 1;
+                pyramids[id].male = pyramids[id].male.map(v => parseFloat(((v / total) * 100).toFixed(2)));
+                pyramids[id].female = pyramids[id].female.map(v => parseFloat(((v / total) * 100).toFixed(2)));
+            });
+            renderTables(); updateAllPyramids();
+        }
+
+        function exportToExcel() {
+            const nameA = document.getElementById('name-a-input').value || 'المجتمع أ';
+            const nameB = document.getElementById('name-b-input').value || 'المجتمع ب';
+            const wb = XLSX.utils.book_new();
+            const ws_data = [["الفئة", `ذكور (${nameA})`, `إناث (${nameA})`, `ذكور (${nameB})`, `إناث (${nameB})` ]];
+            ageGroups.forEach((g, i) => ws_data.push([g, pyramids.p1.male[i], pyramids.p1.female[i], pyramids.p2.male[i], pyramids.p2.female[i]]));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ws_data), "البيانات");
+            XLSX.writeFile(wb, `Demographic_Analysis_${nameA}_${nameB}.xlsx`);
+        }
+
+        function exportToPDF() {
+            const element = document.getElementById('main-report');
+            html2pdf().from(element).save('Demographic_Report.pdf');
+        }
+
+        function exportToImage(format) {
+            const element = document.getElementById('main-report');
+            html2canvas(element, {
+                backgroundColor: "#f8fafc",
+                scale: 2,
+                logging: false,
+                useCORS: true
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Demographic_Analysis_Majid.${format}`;
+                link.href = canvas.toDataURL(`image/${format}`);
+                link.click();
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
